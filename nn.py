@@ -97,4 +97,4 @@ if __name__ == '__main__':
         W[-1] = W[-1] - delta_W[-1]
 
     totC /= y_data.shape[0]
-    print(np.max(W[-2]))
+    print(np.max(W[-1]))
