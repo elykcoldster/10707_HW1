@@ -12,7 +12,6 @@ def ReLU(z):
 
 def sigmoid(z):
     a = 1 / (1 + np.exp(-z))
-    print(a)
     return a
 
 def sigmoid_prime(z, y):
@@ -26,7 +25,7 @@ def softmax(z):
     return a
 
 def softmax_prime(z, y):
-    return (y - np.multiply(y, softmax(z)))
+    return -(y - np.multiply(y, softmax(z)))
 
 def cross_entropy_cost(a, y):
     return np.sum(np.nan_to_num(np.multiply(-y, np.log(a)) - np.multiply((1-y), np.log(1-a))))
@@ -131,9 +130,9 @@ def trainNeuralNetwork(X, Y, W, B, a_funcs, n_epochs=200, batch_size=32, eta=0.0
             params['biases'] = B
 
             AM, ZM = forwardPropagation(Xb, Yb, params)
-            cost = cross_entropy_cost(AM[-1], Yb)
+            cost = cross_entropy_cost(AM[-1], Yb) / batch_size
 
-            #print('Epoch: {0}\tCost:{1}\t\t'.format((i+1), cost), end='\r')
+            print('Epoch: {0}\tCost:{1}\t\t'.format((i+1), cost), end='\r')
             #print(AM[-1], Yb)
 
     return cost, W, B
