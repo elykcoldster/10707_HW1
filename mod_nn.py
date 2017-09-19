@@ -15,20 +15,16 @@ def sigmoid(z):
     return a
 
 def sigmoid_prime(z, y):
-    return sigmoid(z)*(1-sigmoid(z))
+    return np.multiply(sigmoid(z), (1-sigmoid(z)))
 
 def softmax(z):
-    S = np.sum(np.exp(z), axis=1)
-
-    a = np.divide(np.exp(z), np.tile(S,(z.shape[1], 1)).transpose())
-
-    return a
+    return np.exp(z) / np.sum(np.exp(z), axis=1, keepdims=True)
 
 def softmax_prime(z, y):
     return -(y - np.multiply(y, softmax(z)))
 
 def cross_entropy_cost(a, y):
-    return np.sum(np.nan_to_num(np.multiply(-y, np.log(a)) - np.multiply((1-y), np.log(1-a))))
+    return -np.sum(np.multiply(y, np.log(a))) / a.shape[0]
 
 def forwardPropagation(x, y, params):
 
@@ -62,6 +58,7 @@ def backPropagation(x,y,params):
 
     a_funcs = params['activation_functions']
     eta = params['learning_rate']
+    lda = params['lambda']
 
     N = int(x.shape[0]) # batch size
 
@@ -79,7 +76,9 @@ def backPropagation(x,y,params):
     delta /= N
 
     deltas[-1] = delta
-    delta_W[-1] = np.matmul(A[-2].transpose(), delta)
+    delta_W[-1] = np.dot(A[-2].transpose(), delta)
+    delta_W[-1] += lda * W[-1]
+
     delta_B[-1] = np.sum(delta, axis=0)
 
     for i in range(2, len(A)):
@@ -91,6 +90,8 @@ def backPropagation(x,y,params):
 
         deltas[-i] = delta
         delta_W[-i] = np.matmul(A[-(i+1)].transpose(), delta)
+        delta_W[-i] += lda * W[-i]
+
         delta_B[-i] = np.sum(delta, axis=0)
 
     for i in range(len(A) - 1):
@@ -99,12 +100,14 @@ def backPropagation(x,y,params):
 
     return W, B
 
-def trainNeuralNetwork(X, Y, W, B, a_funcs, n_epochs=200, batch_size=32, eta=0.01):
+def trainNeuralNetwork(X, Y, W, B, a_funcs, n_epochs=200, batch_size=32, eta=0.01, lda=0.1):
 
 
     batch_order = np.random.permutation(X.shape[0])
 
     for i in range(n_epochs):
+
+        params = {}
 
         for n in range(int(np.ceil(X.shape[0] / batch_size)) - 1):
 
@@ -114,12 +117,11 @@ def trainNeuralNetwork(X, Y, W, B, a_funcs, n_epochs=200, batch_size=32, eta=0.0
             Xb = X[batch_idx,:]
             Yb = Y[batch_idx]
 
-            params = {}
-
             params['weights'] = W
             params['biases'] = B
             params['activation_functions'] = a_funcs
             params['learning_rate'] = eta
+            params['lambda'] = lda
 
             A, Z = forwardPropagation(Xb, Yb, params)
             params['activations'] = A
@@ -130,10 +132,14 @@ def trainNeuralNetwork(X, Y, W, B, a_funcs, n_epochs=200, batch_size=32, eta=0.0
             params['biases'] = B
 
             AM, ZM = forwardPropagation(Xb, Yb, params)
-            cost = cross_entropy_cost(AM[-1], Yb) / batch_size
+            cost = cross_entropy_cost(AM[-1], Yb)
 
             print('Epoch: {0}\tCost:{1}\t\t'.format((i+1), cost), end='\r')
             #print(AM[-1], Yb)
+
+        AM, ZM = forwardPropagation(X, Y, params)
+
+        # print(AM[-1] - Y)
 
     return cost, W, B
 
@@ -163,5 +169,19 @@ if __name__ == '__main__':
     b = np.sqrt(6)/np.sqrt(n_units + n_outputs)
     W.append(np.random.rand(n_units, n_outputs) * 2 * b - b)
 
+    """from sklearn.neural_network import MLPClassifier
+
+    clf = MLPClassifier(activation = 'logistic', verbose = True)
+    clf.fit(x_data, y_data)"""
+
     C, weights, biases = trainNeuralNetwork(x_data, y_data, W, B,
-        a_funcs=[[sigmoid, sigmoid_prime], [softmax, softmax_prime]])
+        a_funcs=[[sigmoid, sigmoid_prime], [softmax, softmax_prime]],
+        batch_size=64
+    )
+
+    params = {}
+    params['weights'] = weights
+    params['biases'] = biases
+    params['activation_functions'] = [[sigmoid, sigmoid_prime], [softmax, softmax_prime]]
+
+    P, _ = forwardPropagation(x_data, y_data, params)
